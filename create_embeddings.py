@@ -1,13 +1,11 @@
 import os
 import faiss
-import openai
 import numpy as np
-from dotenv import load_dotenv
 from read_pdf import extract_text_from_pdf
+from sentence_transformers import SentenceTransformer
 
-# Load OpenAI key
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Load the SentenceTransformer model
+model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 # Split text into chunks
 def chunk_text(text, max_tokens=500):
@@ -23,17 +21,13 @@ def chunk_text(text, max_tokens=500):
         chunks.append(current.strip())
     return chunks
 
-# Get OpenAI embedding for a chunk
+# Get embedding from Hugging Face model
 def get_embedding(text):
-    response = openai.Embedding.create(
-        input=[text],
-        model="text-embedding-ada-002"
-    )
-    return response["data"][0]["embedding"]
+    return model.encode(text)
 
 # Main process
 if __name__ == "__main__":
-    pdf_path = "your_pdf_notes.pdf"
+    pdf_path = "C:/Users/HP/Documents/College 1st Year (Repositories)/AI Study Chatbot Assistant Project/Unit 1 - Artificial Intelligence Overview.pdf"
     text = extract_text_from_pdf(pdf_path)
     chunks = chunk_text(text)
 
@@ -43,10 +37,12 @@ if __name__ == "__main__":
     embeddings_np = np.array(embeddings).astype("float32")
 
     # Save using FAISS
-    index = faiss.IndexFlatL2(len(embeddings[0]))
+    index = faiss.IndexFlatL2(embeddings_np.shape[1])
     index.add(embeddings_np)
 
+    os.makedirs("vector_store", exist_ok=True)
     faiss.write_index(index, "vector_store/study_index.faiss")
+
     with open("vector_store/chunks.txt", "w", encoding="utf-8") as f:
         for chunk in chunks:
             f.write(chunk + "\n\n")
