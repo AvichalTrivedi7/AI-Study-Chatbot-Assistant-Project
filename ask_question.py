@@ -1,54 +1,79 @@
-# ask_question.py
-
-import pickle
+import tkinter as tk
+from tkinter import scrolledtext
 import faiss
+import numpy as np
 from llama_cpp import Llama
 
-# Load FAISS index
-faiss_index = faiss.read_index("vector_store/study_index.faiss")
-
-
-# Load chunks
+# === Load chunks and FAISS index ===
 with open("vector_store/chunks.txt", "r", encoding="utf-8") as f:
-    chunks = f.readlines()
+    chunks = f.read().split("\n\n")
 
+index = faiss.read_index("vector_store/study_index.faiss")
 
-# Load local Mistral model (adjust path if needed)
-llm = Llama(
-    model_path="C:/Users/HP/Documents/College 1st Year (Repositories)/AI Study Chatbot Assistant Project/models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf",  
-    n_ctx=2048,
-    n_threads=6,  # adjust based on your CPU
-    n_gpu_layers=20,  # optional, if you have a GPU
-    verbose=False
-)
+# === Load Mistral Model ===
+llm = Llama(model_path="models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf", n_ctx=2048)
 
-def search_query(query, k=3):
-    # Load same embedding model as during indexing
+# === FAISS Search (reusing existing embeddings) ===
+def embed_query(text):
+    # Dummy function: Replace with the actual embedding method used during indexing
+    # For example, using sentence-transformers or the same model as used during indexing
+    # Assuming 'sentence-transformers/all-MiniLM-L6-v2'
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    query_vec = model.encode([query])
-    D, I = faiss_index.search(query_vec, k)
-    return [chunks[i] for i in I[0]]
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    return model.encode([text])[0].astype("float32")
 
-def ask(question):
-    top_chunks = search_query(question)
-    context = "\n\n".join(top_chunks)
+def search_similar_chunks(query, k=3):
+    query_vector = embed_query(query).reshape(1, -1)
+    distances, indices = index.search(query_vector, k)
+    return [chunks[i] for i in indices[0]]
 
-    prompt = f"""[INST] You are an AI Study Assistant. Use the given context to answer the question clearly and concisely.
+# === Ask local Mistral LLM ===
+def ask_mistral(context, query):
+    prompt = f"""You are a helpful AI Study Assistant. Use the below context to answer the question.
 
 Context:
 {context}
 
-Question: {question}
-Answer: [/INST]"""
+Question:
+{query}
 
-    response = llm(prompt, max_tokens=512, temperature=0.7)
-    print("\n📘 Answer:\n", response["choices"][0]["text"].strip())
+Answer:"""
+    response = llm(prompt, max_tokens=512, stop=["</s>"])
+    return response["choices"][0]["text"].strip()
 
-# === Test ===
-if __name__ == "__main__":
-    while True:
-        user_q = input("\n❓ Ask your question (or type 'exit'): ")
-        if user_q.lower() == "exit":
-            break
-        ask(user_q)
+# === Callback for Ask Button ===
+def ask_question():
+    query = entry.get()
+    if not query.strip():
+        return
+    chat_box.insert(tk.END, f"\nYou: {query}\n", "user")
+    chat_box.see(tk.END)
+    entry.delete(0, tk.END)
+    root.update_idletasks()
+
+    try:
+        context = "\n".join(search_similar_chunks(query))
+        answer = ask_mistral(context, query)
+        chat_box.insert(tk.END, f"AI: {answer}\n", "ai")
+        chat_box.see(tk.END)
+    except Exception as e:
+        chat_box.insert(tk.END, f"Error: {e}\n", "ai")
+
+# === GUI Setup ===
+root = tk.Tk()
+root.title("AI Study Assistant")
+root.geometry("700x500")
+
+chat_box = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Arial", 12))
+chat_box.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+chat_box.tag_config("user", foreground="blue", font=("Helvetica", 11, "bold"))
+chat_box.tag_config("ai", foreground="green", font=("Helvetica", 11, "bold"))
+
+entry = tk.Entry(root, font=("Helvetica", 12))
+entry.pack(padx=10, pady=5, fill=tk.X)
+entry.bind("<Return>", lambda event: ask_question())
+
+ask_button = tk.Button(root, text="Ask", command=ask_question, font=("Helvetica", 12, "bold"))
+ask_button.pack(pady=5)
+
+root.mainloop()
