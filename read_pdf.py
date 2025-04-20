@@ -14,4 +14,4 @@ def extract_text_from_pdf(pdf_path):
 if __name__ == "__main__":
     pdf_path = "C:/Users/HP/Documents/College 1st Year (Repositories)/AI Study Chatbot Assistant Project/Unit 1 - Artificial Intelligence Overview.pdf"
     text = extract_text_from_pdf(pdf_path)
-    print(text[:1000])  # Print first 1000 characters
+    print(text)  # Print all characters

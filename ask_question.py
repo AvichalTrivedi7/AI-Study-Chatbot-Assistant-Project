@@ -11,13 +11,19 @@ with open("vector_store/chunks.txt", "r", encoding="utf-8") as f:
 index = faiss.read_index("vector_store/study_index.faiss")
 
 # === Load Mistral Model ===
-llm = Llama(model_path="models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf", n_ctx=2048)
+llm = Llama(
+    model_path="models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+    n_ctx=8192,   # You can try 6144 or 8192
+    max_tokens=3072,  # Set higher if desired, within n_ctx limit
+    temperature=0.7,
+    top_p=0.95,
+    repeat_penalty=1.1
+)
 
 # === FAISS Search (reusing existing embeddings) ===
 def embed_query(text):
     # Dummy function: Replace with the actual embedding method used during indexing
     # For example, using sentence-transformers or the same model as used during indexing
-    # Assuming 'sentence-transformers/all-MiniLM-L6-v2'
     from sentence_transformers import SentenceTransformer
     model = SentenceTransformer('all-MiniLM-L6-v2')
     return model.encode([text])[0].astype("float32")
@@ -38,7 +44,7 @@ Question:
 {query}
 
 Answer:"""
-    response = llm(prompt, max_tokens=512, stop=["</s>"])
+    response = llm(prompt, max_tokens=3072, stop=["</s>"])
     return response["choices"][0]["text"].strip()
 
 # === Callback for Ask Button ===
@@ -62,7 +68,7 @@ def ask_question():
 # === GUI Setup ===
 root = tk.Tk()
 root.title("AI Study Assistant")
-root.geometry("700x500")
+root.geometry("500x700")
 
 chat_box = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Arial", 12))
 chat_box.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)

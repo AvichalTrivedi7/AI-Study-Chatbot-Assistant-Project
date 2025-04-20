@@ -8,11 +8,11 @@ from sentence_transformers import SentenceTransformer
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 # Split text into chunks
-def chunk_text(text, max_tokens=500):
+def chunk_text(text, max_chunk_length=500):
     sentences = text.split('. ')
     chunks, current = [], ""
     for sentence in sentences:
-        if len(current) + len(sentence) < max_tokens:
+        if len(current) + len(sentence) < max_chunk_length:
             current += sentence + ". "
         else:
             chunks.append(current.strip())
