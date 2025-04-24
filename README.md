@@ -39,6 +39,8 @@ cd ai-study-assistant
 ```bash
 pip install -r requirements.txt
 ```
+### ***Important** - Use python 3.11.6 for it to be stable, well-supported, and work out of the box with Tkinter. (You can install python 3.11.6 to your virtual env, with it added to your path)
+
 
 ### 3. Complete Folder Structure
 ```
