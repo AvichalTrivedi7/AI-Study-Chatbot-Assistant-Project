@@ -27,7 +27,7 @@ def get_embedding(text):
 
 # Main process
 if __name__ == "__main__":
-    pdf_path = "C:/Users/HP/Documents/College 1st Year (Repositories)/AI Study Chatbot Assistant Project/Unit 1 - Artificial Intelligence Overview.pdf"
+    pdf_path = "C:/Users/HP/Documents/College 1st Year (Repositories)/AI Study Chatbot Assistant Project/pdfs/Medical Terms PDF from WHO.pdf"
     text = extract_text_from_pdf(pdf_path)
     chunks = chunk_text(text)
 
