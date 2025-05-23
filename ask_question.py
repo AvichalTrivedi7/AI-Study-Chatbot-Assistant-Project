@@ -10,11 +10,15 @@ with open("vector_store/chunks.txt", "r", encoding="utf-8") as f:
 
 index = faiss.read_index("vector_store/study_index.faiss")
 
-# === Load Mistral Model ===
+# === Load Mistral Model === (Perfect for my computer specs)
 llm = Llama(
     model_path="models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-    n_ctx=8192,   # You can try 6144 or 8192
-    max_tokens=3072,  # Set higher if desired, within n_ctx limit
+    n_ctx=8192,                 # Good choice for longer prompts
+    max_tokens=3072,            # Fine, keep this unless hitting memory issues
+    n_threads=10,               # Use all 12 logical threads (CPU cores × 2)
+    n_batch=512,                # Very important — reduces forward pass loops
+    use_mmap=True,              # Fast memory-mapped model loading
+    use_mlock=True,             # Locks into RAM (Windows requires admin privileges or WSL2)
     temperature=0.7,
     top_p=0.95,
     repeat_penalty=1.1
@@ -48,6 +52,16 @@ Answer:"""
     return response["choices"][0]["text"].strip()
 
 # === Callback for Ask Button ===
+import threading
+
+def run_llm(query, context):
+    try:
+        answer = ask_mistral(context, query)
+        chat_box.insert(tk.END, f"AI: {answer}\n", "ai")
+        chat_box.see(tk.END)
+    except Exception as e:
+        chat_box.insert(tk.END, f"Error: {e}\n", "ai")
+
 def ask_question():
     query = entry.get()
     if not query.strip():
@@ -59,9 +73,9 @@ def ask_question():
 
     try:
         context = "\n".join(search_similar_chunks(query))
-        answer = ask_mistral(context, query)
-        chat_box.insert(tk.END, f"AI: {answer}\n", "ai")
+        chat_box.insert(tk.END, f"AI: Thinking...\n", "ai")
         chat_box.see(tk.END)
+        threading.Thread(target=run_llm, args=(query, context)).start()
     except Exception as e:
         chat_box.insert(tk.END, f"Error: {e}\n", "ai")
 
