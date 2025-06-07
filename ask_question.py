@@ -1,8 +1,12 @@
+# === Imports & Global Models ===
 import tkinter as tk
 from tkinter import scrolledtext
-import faiss
-import numpy as np
+import faiss, numpy as np, threading
 from llama_cpp import Llama
+from sentence_transformers import SentenceTransformer
+
+# Pre-load embedding model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # === Load chunks and FAISS index ===
 with open("vector_store/chunks.txt", "r", encoding="utf-8") as f:
@@ -14,7 +18,7 @@ index = faiss.read_index("vector_store/study_index.faiss")
 llm = Llama(
     model_path="models/mistral/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
     n_ctx=8192,                 # Good choice for longer prompts
-    max_tokens=3072,            # Fine, keep this unless hitting memory issues
+    max_tokens=3072,            # Generation upto these many tokens
     n_threads=10,               # Use all 12 logical threads (CPU cores × 2)
     n_batch=512,                # Very important — reduces forward pass loops
     use_mmap=True,              # Fast memory-mapped model loading
@@ -28,8 +32,6 @@ llm = Llama(
 def embed_query(text):
     # Dummy function: Replace with the actual embedding method used during indexing
     # For example, using sentence-transformers or the same model as used during indexing
-    from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer('all-MiniLM-L6-v2')
     return model.encode([text])[0].astype("float32")
 
 def search_similar_chunks(query, k=3):
@@ -48,12 +50,10 @@ Question:
 {query}
 
 Answer:"""
-    response = llm(prompt, max_tokens=3072, stop=["</s>"])
+    response = llm(prompt, max_tokens=1024, stop=["</s>"])
     return response["choices"][0]["text"].strip()
 
 # === Callback for Ask Button ===
-import threading
-
 def run_llm(query, context):
     try:
         answer = ask_mistral(context, query)
@@ -61,11 +61,19 @@ def run_llm(query, context):
         chat_box.see(tk.END)
     except Exception as e:
         chat_box.insert(tk.END, f"Error: {e}\n", "ai")
+    finally:
+        ask_button.config(state=tk.NORMAL)
+        entry.config(state=tk.NORMAL)
 
 def ask_question():
     query = entry.get()
     if not query.strip():
         return
+    
+    # disable inputs until model returns
+    ask_button.config(state=tk.DISABLED)
+    entry.config(state=tk.DISABLED)
+
     chat_box.insert(tk.END, f"\nYou: {query}\n", "user")
     chat_box.see(tk.END)
     entry.delete(0, tk.END)
