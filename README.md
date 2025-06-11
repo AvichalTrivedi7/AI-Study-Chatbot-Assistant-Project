@@ -81,6 +81,7 @@ python quiz_mode.py
 - Upload a syllabus PDF.
 - The model generates 5 MCQs from the uploaded content.
 
+Important Note :- Please download the model from --> https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF - Download the Q4_K_M version only (Balance between speed and quality)
 ---
 
 ## 🧠 Future Plans
